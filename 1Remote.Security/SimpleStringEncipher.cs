@@ -5,37 +5,22 @@ namespace _1Remote.Security
 {
     public static class SimpleStringEncipher
     {
-        private static readonly Random Random = new Random();
         public static string Encrypt(string plainText)
         {
             if (string.IsNullOrEmpty(plainText))
-                return string.Empty;
+                return "";
 
-            string keyString;
-            // Random key + Salt
-            {
-                var key = new StringBuilder();
-                for (int i = 0; i < 32; i++)
-                {
-                    key.Append((char)Random.Next('0', 'z'));
-                }
-                keyString = key.ToString();
-                var salt = Base.GetSalt();
-                if (salt.Length < 32)
-                {
-                    keyString = keyString.Substring(0, 32 - salt.Length) + salt;
-                }
-            }
-
+            string randomKey = KeyGenerator.GetRandomKey();
+            string randomKeySalt = KeyGenerator.GetKetWithSalt(randomKey);
 
             // AES
-            var aesText = EasyEncryption.AesThenHmac.SimpleEncryptWithPassword(plainText, keyString);
+            var aesText = EasyEncryption.AesThenHmac.SimpleEncryptWithPassword(plainText, randomKeySalt);
 
 
             // keyString insert into cipherText
             var cipher = new StringBuilder();
             int m = 0, n = 0;
-            for (int i = 0; i < Math.Min(aesText.Length, keyString.Length); i++)
+            for (int i = 0; i < randomKey.Length * 2; i++)
             {
                 if (i % 2 == 0)
                 {
@@ -44,7 +29,7 @@ namespace _1Remote.Security
                 }
                 else
                 {
-                    cipher.Append(keyString[n]);
+                    cipher.Append(randomKey[n]);
                     n++;
                 }
             }
@@ -53,15 +38,7 @@ namespace _1Remote.Security
             {
                 for (int i = m; i < aesText.Length; i++)
                 {
-                    cipher.Append(aesText[m]);
-                }
-            }
-
-            if (n < keyString.Length)
-            {
-                for (int i = m; i < keyString.Length; i++)
-                {
-                    cipher.Append(keyString[m]);
+                    cipher.Append(aesText[i]);
                 }
             }
 
@@ -69,19 +46,20 @@ namespace _1Remote.Security
         }
 
 
-        public static string SimpleDecrypt(string cipherText)
+        public static string? Decrypt(string cipherText)
         {
-            if (string.IsNullOrEmpty(cipherText))
-                return string.Empty;
+            if (cipherText == "")
+                return "";
             if (cipherText.Length <= 64)
-                return string.Empty;
+                return null;
 
             // keyString from into cipherText
             var keyString = new StringBuilder();
             var aesString = new StringBuilder();
+            string rk = KeyGenerator.GetRandomKey();
             {
                 int m = 0;
-                for (m = 0; m < 64; m++)
+                for (m = 0; m < rk.Length * 2; m++)
                 {
                     if (m % 2 == 0)
                     {
@@ -99,15 +77,16 @@ namespace _1Remote.Security
                 }
             }
 
-            var key = keyString.ToString();
+            var randomKey = keyString.ToString();
+            string randomKeySalt = KeyGenerator.GetKetWithSalt(randomKey);
             var str = aesString.ToString();
             try
             {
-                return EasyEncryption.AesThenHmac.SimpleDecryptWithPassword(str, key);
+                return EasyEncryption.AesThenHmac.SimpleDecryptWithPassword(str, randomKeySalt);
             }
             catch (Exception)
             {
-                return string.Empty;
+                return null;
             }
         }
     }

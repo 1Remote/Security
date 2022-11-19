@@ -8,6 +8,7 @@ namespace _1Remote.Security
 {
     public static class Config
     {
+        private static readonly Random Random = new Random();
         public static string Salt { get; private set; } = "";
         public static void SetSalt(string salt)
         {
